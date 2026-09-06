@@ -259,7 +259,7 @@ with st.sidebar:
         st.session_state.analysis=""; st.session_state.scan={}; st.session_state.chat=[]
         st.rerun()
     st.markdown("---")
-    st.caption(f"Model: {MODEL_NAME}")
+    
 
 st.markdown(
     """<div class="hero">
@@ -367,8 +367,6 @@ with right:
         <div style="font-size:21px;font-weight:800;margin:5px 0 16px">{language}</div>
         <div class="label">Mode</div>
         <div style="font-size:14px;font-weight:700;margin:5px 0 16px">{mode}</div>
-        <div class="label">AI model</div>
-        <div style="font-size:13px;font-weight:650;color:#c4b5fd;margin-top:5px">{MODEL_NAME}</div>
         </div>""",
         unsafe_allow_html=True,
     )
