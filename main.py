@@ -69,12 +69,18 @@ st.markdown(r"""
 .block-container{max-width:1480px;padding:1.6rem 2rem 130px}
 section[data-testid="stSidebar"]{background:linear-gradient(180deg,#0a1020,#070b14);border-right:1px solid rgba(148,163,184,.14)}
 
-/* ---------- kill the native Streamlit chrome that was masking the hero ---------- */
-header[data-testid="stHeader"]{display:none!important}
+/* ---------- native Streamlit chrome: keep it FUNCTIONAL, just visually
+   quiet. We do NOT display:none the header — that also removes the
+   "expand sidebar" control when the sidebar is collapsed, leaving no way
+   back in. Instead we make it transparent and compact, and only hide the
+   specific decorative bits (menu, deploy toolbar, gradient bar). ---------- */
+header[data-testid="stHeader"]{background:transparent!important;box-shadow:none!important;height:2.6rem!important;min-height:0!important}
+header[data-testid="stHeader"] [data-testid="stToolbarActions"]{display:none!important}
+header[data-testid="stHeader"] [data-testid="stDecoration"]{display:none!important}
 #MainMenu{visibility:hidden!important}
 footer{visibility:hidden!important}
-div[data-testid="stDecoration"]{display:none!important}
-div[data-testid="stToolbar"]{display:none!important}
+/* make sure the collapsed-sidebar reopen control stays visible/clickable above everything */
+[data-testid="stSidebarCollapsedControl"]{z-index:999999!important;opacity:1!important;visibility:visible!important}
 
 /* ---------- hero ---------- */
 .hero{position:relative;overflow:hidden;isolation:isolate;padding:28px 32px 25px;margin:0 0 18px;border-radius:26px;border:1px solid rgba(139,92,246,.25);background:radial-gradient(circle at 84% 15%,rgba(34,211,238,.13),transparent 25%),radial-gradient(circle at 18% 110%,rgba(139,92,246,.13),transparent 34%),rgba(15,23,42,.72);box-shadow:0 22px 60px rgba(0,0,0,.25);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
