@@ -259,7 +259,7 @@ with st.sidebar:
     mode=st.selectbox("Doctor mode", list(MODES))
     st.markdown("---")
     if st.button("💡 Load example", use_container_width=True):
-        st.session_state.example=SAMPLES.get(language, "// Paste your code here")
+        st.session_state.code_editor = SAMPLES.get(language, "// Paste your code here")
         st.rerun()
     if st.button("🧹 Clear workspace", use_container_width=True):
         st.session_state.analysis=""; st.session_state.scan={}; st.session_state.chat=[]
@@ -302,10 +302,8 @@ with left:
         unsafe_allow_html=True,
     )
 
-    default = st.session_state.pop("example", "")
     code = st.text_area(
         "Code",
-        value=default,
         height=450,
         placeholder="Paste your code here...",
         label_visibility="collapsed",
