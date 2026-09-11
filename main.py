@@ -60,7 +60,7 @@ console.log(getUserName(user));''',
     "SQL": "SELECT * FROM users WHERE username = 'admin' OR 1=1;",
 }
 
-st.set_page_config(page_title="CodeDoctor", page_icon="🩺", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="CodeDoctor", page_icon="💉", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown(r"""
 <style>
