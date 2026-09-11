@@ -107,7 +107,7 @@ div[data-baseweb="tab-list"]{gap:5px;padding:6px;border-radius:16px;background:r
 
 /* ---------- the REAL st.chat_input, restyled as the floating glass dock ---------- */
 div[data-testid="stBottom"]{z-index:960!important}
-div[data-testid="stBottomBlockContainer"]{z-index:960!important;background:transparent!important;padding:0 0 49px!important}
+div[data-testid="stBottomBlockContainer"]{z-index:960!important;background:transparent!important;padding:0 0 45px!important}
 div[data-testid="stBottom"]>div{background:transparent!important}
 div[data-testid="stChatInput"]{max-width:900px;margin:0 auto;position:relative;z-index:960;border-radius:20px!important;border:1px solid rgba(96,165,250,.38)!important;background:linear-gradient(135deg,rgba(30,64,175,.4),rgba(88,28,135,.28) 55%,rgba(8,13,26,.94))!important;box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 0 1px rgba(96,165,250,.06),0 0 46px rgba(59,130,246,.16);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);transition:box-shadow .2s ease,border-color .2s ease}
 div[data-testid="stChatInput"]:focus-within{border-color:rgba(96,165,250,.7)!important;box-shadow:0 20px 60px rgba(0,0,0,.5),0 0 0 1px rgba(96,165,250,.16),0 0 60px rgba(59,130,246,.3)}
