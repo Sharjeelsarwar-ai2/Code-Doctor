@@ -1,6 +1,6 @@
 # 🩺 CodeDoctor
 
-**Your AI-powered coding clinic.** Diagnose bugs, understand code, and ship better software — powered by Streamlit and Groq.
+**Your AI-powered coding clinic.** Diagnose bugs, understand code, and ship better software — powered by Streamlit, Nebius Token Factory, and NVIDIA Nemotron models.
 
 CodeDoctor takes a snippet of code, runs it through a local static scan plus an LLM-driven "full diagnosis," and returns a structured report: root cause, a corrected version of your code, a beginner-friendly explanation, performance/security improvements, and generated tests. You can then keep asking follow-up questions about the same code and report in a lightweight chat panel.
 
@@ -24,10 +24,17 @@ CodeDoctor takes a snippet of code, runs it through a local static scan plus an 
 | Layer        | Technology                          |
 |--------------|--------------------------------------|
 | UI           | [Streamlit](https://streamlit.io)    |
-| AI inference | [Groq API](https://groq.com) (`openai/gpt-oss-120b`) |
+| AI inference | [Nebius Token Factory](https://tokenfactory.nebius.com/) (OpenAI-compatible API) with NVIDIA Nemotron models |
 | Language     | Python 3.9+                          |
 
 ---
+
+## 🧠 Model routing
+
+- **Fast Nemotron** (default `nvidia/nemotron-3-nano`) for quick scans, explanations, tests, and follow-up chat.
+- **Reasoning Nemotron** (default `nvidia/nemotron-3-super`) for 🩺 Full Diagnosis.
+
+Check the exact model IDs in your Token Factory console and override them with `NEBIUS_MODEL_FAST` / `NEBIUS_MODEL_REASONING` in secrets or environment variables if they differ.
 
 ## 📦 Getting started
 
@@ -38,28 +45,28 @@ Make sure you have `app.py` (the CodeDoctor source) in your project folder.
 ### 2. Install dependencies
 
 ```bash
-pip install streamlit groq
+pip install streamlit openai
 ```
 
-### 3. Add your Groq API key
+### 3. Add your Nebius API key
 
-Get a free key from the [Groq Console](https://console.groq.com/keys), then configure it one of two ways:
+Get a key from [Nebius Token Factory](https://tokenfactory.nebius.com/), then configure it one of two ways:
 
 **Option A — Streamlit secrets (recommended for Streamlit Cloud)**
 
 Create `.streamlit/secrets.toml`:
 
 ```toml
-GROQ_API_KEY = "your-groq-api-key-here"
+NEBIUS_API_KEY = "your-nebius-api-key-here"
 ```
 
 **Option B — Environment variable (recommended for local/Colab use)**
 
 ```bash
-export GROQ_API_KEY="your-groq-api-key-here"
+export NEBIUS_API_KEY="your-nebius-api-key-here"
 ```
 
-> The app checks `st.secrets` first and falls back to the `GROQ_API_KEY` environment variable, so either method works out of the box.
+> The app checks `st.secrets` first and falls back to the `NEBIUS_API_KEY` environment variable, so either method works out of the box.
 
 ### 4. Run the app
 
@@ -74,10 +81,10 @@ The app opens at `http://localhost:8501`.
 ## ☁️ Running in Google Colab
 
 ```python
-!pip install streamlit groq pyngrok -q
+!pip install streamlit openai pyngrok -q
 
 import os
-os.environ["GROQ_API_KEY"] = "your-groq-api-key-here"
+os.environ["NEBIUS_API_KEY"] = "your-nebius-api-key-here"
 
 from pyngrok import ngrok
 ngrok.set_auth_token("your-ngrok-authtoken")  # from https://dashboard.ngrok.com
@@ -122,7 +129,7 @@ Click the printed URL to open CodeDoctor in your browser.
 .
 ├── app.py               # Full Streamlit application (UI + logic)
 └── .streamlit/
-    └── secrets.toml     # (optional) GROQ_API_KEY for local/cloud deployment
+    └── secrets.toml     # (optional) NEBIUS_API_KEY for local/cloud deployment
 ```
 
 CodeDoctor is intentionally a single-file app for easy deployment (e.g. Streamlit Cloud, Colab, or a quick local demo).
@@ -132,7 +139,7 @@ CodeDoctor is intentionally a single-file app for easy deployment (e.g. Streamli
 ## ⚠️ Notes
 
 - CodeDoctor **never executes your code**. All analysis is static — either simple pattern-based checks run locally, or reasoning performed by the LLM. No compiler/interpreter is invoked.
-- Keep your `GROQ_API_KEY` out of source control. Use `secrets.toml` or environment variables, and add `.streamlit/secrets.toml` to `.gitignore`.
+- Keep your `NEBIUS_API_KEY` out of source control. Use `secrets.toml` or environment variables, and add `.streamlit/secrets.toml` to `.gitignore`.
 
 ---
 
