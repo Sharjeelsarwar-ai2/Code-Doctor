@@ -8,6 +8,7 @@ CodeDoctor takes a snippet of code, runs it through a local static scan plus an 
 
 ## ✨ Features
 
+- **🔁 Diagnose → Fix → Test loop** — after a diagnosis, propose a fix, generate a test for that fix, re-check the fixed code (model reasoning + local static scan, never execution), and show the diff/what changed
 - **🩺 Full Diagnosis mode** — root cause analysis, fixed code, explanation, improvements, tests, and a final verdict (`HEALTHY` / `NEEDS FIXES` / `CRITICAL ISSUES`)
 - **🐛 Focused modes** — Debug, Optimize, Explain, Tests, or Security, so the AI concentrates on exactly what you need
 - **🔎 Quick Scan** — instant local static checks (unbalanced brackets/quotes, hard-coded secrets, `eval()` usage, tautological SQL conditions, overly long lines/files) with **no API call required**
