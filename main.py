@@ -271,9 +271,91 @@ Answer directly and accurately. Explain reasoning. Include corrected code when u
     return r.choices[0].message.content
 
 
+def fix_and_test(code, language, report):
+    """Diagnose -> Fix -> Test loop, reusing analyze()/ask() style calls.
+
+    Step 1: propose a fix and a test for that fix, from the diagnosis.
+    Step 2: extract the fixed code, run the local static scan on it, and
+    ask the model to re-check the fixed code against the original.
+    Nothing here executes user code; the re-check is static reasoning
+    plus the same local scan used by Quick Scan.
+    Returns (fix_report, fixed_code_text, test_text, recheck_text, fixed_scan).
+    """
+    c=client()
+    if not c: raise RuntimeError("NEBIUS_API_KEY is not configured.")
+    fix_prompt=f'''You are CodeDoctor, an expert software engineer and debugging mentor.
+Language: {language}
+
+Original code:
+```{language.lower()}
+{code}
+```
+
+Previous diagnosis:
+{report[-12000:] if report else "No report yet."}
+
+Propose ONE fix for the most important issue in the diagnosis. Do not
+pretend to execute any code. Return EXACTLY these headings:
+
+## Proposed Fix
+## Fixed Code
+## Test
+## What Changed
+
+Under Fixed Code provide a complete corrected version of the supplied
+code. Under Test provide a test for that fix, in the same language
+where possible, with expected results. Under What Changed explain, in
+plain language, what changed between the original and the fixed code.'''
+    r=c.chat.completions.create(model=MODEL_REASONING,messages=[
+        {"role":"system","content":"You are CodeDoctor: precise, practical, security-aware, and beginner-friendly."},
+        {"role":"user","content":fix_prompt}],temperature=.2,max_tokens=10000)
+    fix_report=r.choices[0].message.content
+    fixed=fixed_code(extract(fix_report,"Fixed Code",["Test","What Changed"]))
+    test_text=extract(fix_report,"Test",["What Changed"])
+    fixed_scan=local_scan(fixed, language) if fixed else {"errors":[],"warnings":[],"info":[]}
+    fixed_scan_text="\n".join(f"- {x}" for group in fixed_scan.values() for x in group) or "- No local findings."
+    recheck_prompt=f'''You are CodeDoctor, an expert software engineer and debugging mentor.
+Language: {language}
+
+Original code:
+```{language.lower()}
+{code}
+```
+
+Fixed code:
+```{language.lower()}
+{fixed}
+```
+
+Test for the fix:
+{test_text}
+
+Local scan of the fixed code:
+{fixed_scan_text}
+
+Re-check the fixed code against the original. Do not pretend to execute
+it. Return EXACTLY these headings:
+
+## Re-check
+## Verdict
+
+Under Re-check say whether the fix addresses the original issue, and
+name any issue that remains. Under Verdict use exactly HEALTHY,
+NEEDS FIXES, or CRITICAL ISSUES.'''
+    r2=c.chat.completions.create(model=MODEL_FAST,messages=[
+        {"role":"system","content":"You are CodeDoctor: precise, practical, security-aware, and beginner-friendly."},
+        {"role":"user","content":recheck_prompt}],temperature=.2,max_tokens=7000)
+    return fix_report, fixed, test_text, r2.choices[0].message.content, fixed_scan
+
+
 if "analysis" not in st.session_state: st.session_state.analysis=""
 if "scan" not in st.session_state: st.session_state.scan={}
 if "chat" not in st.session_state: st.session_state.chat=[]
+if "loop_report" not in st.session_state: st.session_state.loop_report=""
+if "loop_fixed" not in st.session_state: st.session_state.loop_fixed=""
+if "loop_test" not in st.session_state: st.session_state.loop_test=""
+if "loop_recheck" not in st.session_state: st.session_state.loop_recheck=""
+if "loop_scan" not in st.session_state: st.session_state.loop_scan={}
 
 with st.sidebar:
     st.markdown("## 🩺 CodeDoctor")
@@ -286,6 +368,7 @@ with st.sidebar:
         st.rerun()
     if st.button("🧹 Clear workspace", use_container_width=True):
         st.session_state.analysis=""; st.session_state.scan={}; st.session_state.chat=[]
+        st.session_state.loop_report=""; st.session_state.loop_fixed=""; st.session_state.loop_test=""; st.session_state.loop_recheck=""; st.session_state.loop_scan={}
         st.rerun()
     st.markdown("---")
     
@@ -427,6 +510,46 @@ if st.session_state.analysis:
         st.markdown(extract(report,"Tests",["Verdict"]) or "No tests section returned.")
     with tabs[5]:
         st.markdown(report)
+
+if st.session_state.analysis:
+    st.markdown('<div class="result-head"><div class="result-title">🔁 Diagnose → Fix → Test loop</div><div class="pill">● Significant update</div></div>', unsafe_allow_html=True)
+    st.markdown("Propose a fix for the diagnosis above, generate a test for that fix, then re-check the fixed code and show what changed. Code is never executed — the re-check is model reasoning plus the local static scan.")
+    if st.button("🔁 Propose fix, test it, re-check", type="primary"):
+        if not api_key():
+            st.error("NEBIUS_API_KEY is not configured. Add it in Streamlit Cloud → Settings → Secrets.")
+        else:
+            try:
+                with st.spinner("🔁 CodeDoctor is fixing, testing, and re-checking..."):
+                    loop_report, loop_fixed, loop_test, loop_recheck, loop_scan = fix_and_test(code, language, st.session_state.analysis)
+                st.session_state.loop_report = loop_report
+                st.session_state.loop_fixed = loop_fixed
+                st.session_state.loop_test = loop_test
+                st.session_state.loop_recheck = loop_recheck
+                st.session_state.loop_scan = loop_scan
+                st.success("Fix-test loop complete.")
+            except Exception as e:
+                st.error(f"CodeDoctor could not complete the fix-test loop: {e}")
+    if st.session_state.loop_report:
+        loop_tabs = st.tabs(["🛠️ Proposed Fix","💻 Fixed Code","🧪 Test","🔁 Re-check","↔️ What Changed"])
+        with loop_tabs[0]:
+            st.markdown(extract(st.session_state.loop_report,"Proposed Fix",["Fixed Code","Test","What Changed"]) or "No proposed-fix section returned.")
+        with loop_tabs[1]:
+            st.code(st.session_state.loop_fixed or "No fixed code returned.", language=language.lower())
+            ext_loop = {"Python":"py","C++":"cpp","C":"c","C#":"cs","Java":"java","JavaScript":"js","TypeScript":"ts","PHP":"php","SQL":"sql","HTML/CSS":"html","Go":"go","Rust":"rs"}.get(language,"txt")
+            st.download_button("⬇️ Loop Fixed Code", data=st.session_state.loop_fixed, file_name=f"codedoctor_loop_fixed.{ext_loop}", mime="text/plain", disabled=not st.session_state.loop_fixed)
+        with loop_tabs[2]:
+            st.markdown(st.session_state.loop_test or "No test returned.")
+        with loop_tabs[3]:
+            st.markdown(st.session_state.loop_recheck or "No re-check returned.")
+            if st.session_state.loop_scan:
+                s = st.session_state.loop_scan
+                m1,m2 = st.columns(2)
+                m1.metric("Fixed-code errors", len(s.get("errors",[])))
+                m2.metric("Fixed-code warnings", len(s.get("warnings",[])))
+                for item in s.get("errors",[]): st.error(item)
+                for item in s.get("warnings",[]): st.warning(item)
+        with loop_tabs[4]:
+            st.markdown(extract(st.session_state.loop_report,"What Changed",["__END__"]) or "No what-changed section returned.")
 
 # Chat history renders in-flow, in the normal page scroll, directly above
 # the input — no floating/fixed panel, no unfolding overlay.
