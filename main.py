@@ -1,10 +1,39 @@
 import os
 import re
 import streamlit as st
-from groq import Groq
+from openai import OpenAI
 
 APP_NAME = "CodeDoctor"
-MODEL_NAME = "openai/gpt-oss-120b"
+
+# Nebius Token Factory (OpenAI-compatible API) for the Nebius x NVIDIA
+# Global AI Hackathon. Check the exact model IDs in the Token Factory
+# console and override them in Streamlit secrets / environment if needed:
+#   NEBIUS_MODEL_FAST = "nvidia/nemotron-3-nano"
+#   NEBIUS_MODEL_REASONING = "nvidia/nemotron-3-super"
+NEBIUS_BASE_URL = "https://api.tokenfactory.nebius.com/v1/"
+MODEL_NAME = "nvidia/nemotron-3-super"
+
+
+def _config_value(name, default=""):
+    """Read a value from Streamlit secrets first, then the environment."""
+    try:
+        value = str(st.secrets.get(name, "")).strip()
+        if value:
+            return value
+    except Exception:
+        pass
+    return os.environ.get(name, default).strip()
+
+
+MODEL_FAST = _config_value("NEBIUS_MODEL_FAST", "nvidia/nemotron-3-nano")
+MODEL_REASONING = _config_value("NEBIUS_MODEL_REASONING", MODEL_NAME)
+
+
+def model_for_mode(mode):
+    """Fast Nemotron for quick scans; a reasoning model for Full Diagnosis."""
+    if "Full Diagnosis" in mode:
+        return MODEL_REASONING
+    return MODEL_FAST
 
 LANGUAGES = ["Python", "C++", "C", "C#", "Java", "JavaScript", "TypeScript", "PHP", "SQL", "HTML/CSS", "Go", "Rust"]
 MODES = {
@@ -128,19 +157,13 @@ div[data-testid="stChatInput"] button:hover{background:rgba(96,165,250,.22)!impo
 
 
 def api_key():
-    try:
-        key = str(st.secrets.get("GROQ_API_KEY", "")).strip()
-        if key:
-            return key
-    except Exception:
-        pass
-    return os.environ.get("GROQ_API_KEY", "").strip()
+    return _config_value("NEBIUS_API_KEY")
 
 
 @st.cache_resource(show_spinner=False)
 def client():
     key = api_key()
-    return Groq(api_key=key) if key else None
+    return OpenAI(base_url=NEBIUS_BASE_URL, api_key=key) if key else None
 
 
 def local_scan(code, language):
@@ -221,16 +244,16 @@ Return EXACTLY these headings:
 
 Under Fixed Code provide a complete corrected version of the supplied code when a fix is possible. Under Verdict use exactly HEALTHY, NEEDS FIXES, or CRITICAL ISSUES.'''
     c=client()
-    if not c: raise RuntimeError("GROQ_API_KEY is not configured.")
-    r=c.chat.completions.create(model=MODEL_NAME,messages=[
+    if not c: raise RuntimeError("NEBIUS_API_KEY is not configured.")
+    r=c.chat.completions.create(model=model_for_mode(mode),messages=[
         {"role":"system","content":"You are CodeDoctor: precise, practical, security-aware, and beginner-friendly."},
-        {"role":"user","content":prompt}],temperature=.2,max_completion_tokens=10000)
+        {"role":"user","content":prompt}],temperature=.2,max_tokens=10000)
     return r.choices[0].message.content, scan
 
 
 def ask(question, code, language, report):
     c=client()
-    if not c: raise RuntimeError("GROQ_API_KEY is not configured.")
+    if not c: raise RuntimeError("NEBIUS_API_KEY is not configured.")
     prompt=f'''Continue this CodeDoctor session.
 Language: {language}
 Current code:
@@ -242,9 +265,9 @@ Previous report:
 
 User question: {question}
 Answer directly and accurately. Explain reasoning. Include corrected code when useful. Never claim that you executed the code.'''
-    r=c.chat.completions.create(model=MODEL_NAME,messages=[
+    r=c.chat.completions.create(model=MODEL_FAST,messages=[
         {"role":"system","content":"You are CodeDoctor, an expert programming mentor."},
-        {"role":"user","content":prompt}],temperature=.25,max_completion_tokens=7000)
+        {"role":"user","content":prompt}],temperature=.25,max_tokens=7000)
     return r.choices[0].message.content
 
 
@@ -349,7 +372,7 @@ with left:
         if not code.strip():
             st.warning("Paste some code first.")
         elif not api_key():
-            st.error("GROQ_API_KEY is not configured. Add it in Streamlit Cloud → Settings → Secrets.")
+            st.error("NEBIUS_API_KEY is not configured. Add it in Streamlit Cloud → Settings → Secrets.")
         else:
             try:
                 with st.spinner("🩺 CodeDoctor is examining your code..."):
